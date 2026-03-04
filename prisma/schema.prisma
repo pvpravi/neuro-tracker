@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  PARENT
+  THERAPIST
+}
+
+enum SchoolingStatus {
+  NOT_APPLICABLE  // For babies/toddlers
+  GENERAL_ED
+  IEP             // Individualized Education Program
+  SECTION_504     // 504 Accommodations Plan
+  HOMESCHOOL
+}
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique
+  email     String?
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(PARENT) // Defaults to parent, but we can upgrade users to therapists
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  children  Child[]
+}
+
+model Child {
+  id               String            @id @default(uuid())
+  userId           String
+  name             String
+  age              Int?
+  gender           String?
+  diagnoses       String[]         // e.g., ["ADHD", "Autism", "OCD"]
+  schoolingStatus SchoolingStatus  @default(NOT_APPLICABLE)
+  primaryConcerns String[]         // e.g., ["Diet & Feeding", "Meltdowns", "Sleep"]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now()) @updatedAt
+  assessments      Assessment[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dietaryProfile   DietaryProfile?
+  educationProfile EducationProfile?
+  oneYearPlan      OneYearPlan?
+  weeklyCheckins   WeeklyCheckin[]
+  documents       Document[]       // Relationship to the new Document model
+}
+
+model Assessment {
+  id                          String   @id @default(uuid())
+  childId                     String
+  patternLogicScore           Float    @default(0)
+  sensoryRegulationScore      Float    @default(0)
+  verbalExpressiveScore       Float    @default(0)
+  fineMotorScore              Float    @default(0)
+  ageGroup                    String?
+  questionnaireData           Json?
+  createdAt                   DateTime @default(now())
+  dietaryProfile              String?
+  glpCommunication            String?
+  learningModality            String?
+  motorFatigue                String?
+  readingProcessing           String?
+  repetitiveComfortScore      Float    @default(0)
+  routineDistress             String?
+  socialEngagement            String?
+  spatialConstructiveScore    Float    @default(0)
+  taskPersistenceScore        Float    @default(0)
+  transitionAdaptabilityScore Float    @default(0)
+  specialCareReport           String?
+  child                       Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model DietaryProfile {
+  id               String   @id @default(uuid())
+  childId          String   @unique
+  allergies        String?
+  sensoryAversions String?
+  currentDiet      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  child            Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model EducationProfile {
+  id            String   @id @default(uuid())
+  childId       String   @unique
+  setting       String?
+  hasIEP        Boolean  @default(false)
+  learningStyle String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  child         Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model OneYearPlan {
+  id            String   @id @default(uuid())
+  childId       String   @unique
+  proposedGoal  String?
+  isApproved    Boolean  @default(false)
+  userFeedback  String?
+  hiddenAiPlan  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  publishedGoal String?
+  child         Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model WeeklyCheckin {
+  id                 String   @id @default(uuid())
+  childId            String
+  weekStartDate      DateTime @default(now())
+  progressNotes      String?
+  dietAdherence      String?
+  moodRating         Int?
+  aiWeeklyStrategy   String?
+  createdAt          DateTime @default(now())
+  aiInference        String?
+  aiRecommendations  String?
+  challengesFaced    String?
+  parentObservations String?
+  progressScore      Float?
+  tasksCompleted     Json?
+  updatedAt          DateTime @updatedAt
+  weekNumber         Int
+  weeklyTasks        Json?
+  child              Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model ClinicalStrategy {
+  id          String   @id @default(uuid())
+  domain      String   // Matches your DOMAINS: e.g., "SENSORY_REGULATION"
+  ageGroup    String   // e.g., "0-3", "4-6", "7+", or "All"
+  title       String
+  description String   @db.Text
+  intensity   String   @default("low") // "low" for gentle days, "high" for high-engagement days
+  source      String?  @default("Medha Labs Internal") 
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  childId     String
+  title       String   // e.g., "Occupational Therapy Eval 2026"
+  documentUrl String   // Where the file is stored (we'll set up upload later)
+  extractedAiData String?  @db.Text // Where Llama saves the summary of the PDF
+  uploadedAt  DateTime @default(now())
+
+  child       Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+}

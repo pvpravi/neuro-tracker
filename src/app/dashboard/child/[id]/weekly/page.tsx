@@ -1,0 +1,146 @@
+import { prisma } from "@/lib/prisma";
+import Link from "next/link";
+import ExportPdfButton from "@/components/ExportPdfButton";
+import ProgressChart from "./ProgressChart"; // Make sure this file exists in the same folder!
+
+export default async function WeeklyDashboardPage(props: { params: Promise<{ id: string }> }) {
+  // 1. UNWRAP THE PARAMS PROMISE
+  const params = await props.params;
+  const childId = params.id;
+
+  const child = await prisma.child.findUnique({
+    where: { id: childId },
+    include: {
+      oneYearPlan: true,
+      weeklyCheckins: {
+        orderBy: { weekNumber: 'asc' } // <-- Pull the history for the chart!
+      }
+    }
+  });
+
+  if (!child) return <div>Child not found</div>;
+
+  const currentWeek = child.weeklyCheckins[child.weeklyCheckins.length - 1];
+  const weeklyTasks = (currentWeek?.weeklyTasks as any[]) || [];
+
+  return (
+    <div className="max-w-4xl mx-auto p-8 print:p-0 print:bg-white print:max-w-full">
+      
+      {/* HEADER SECTION */}
+      <div className="flex justify-between items-start mb-8 print:mb-4">
+        <div>
+          <Link href={`/dashboard/child/${child.id}`} className="print:hidden text-indigo-600 hover:text-indigo-800 text-sm mb-2 block">
+            ← Back to Profile
+          </Link>
+          <h1 className="text-3xl font-black text-slate-900">
+            {child.name}&apos;s Clinical Roadmap
+          </h1>
+          <p className="text-slate-600 print:text-black">Week {currentWeek?.weekNumber || 0} of 52</p>
+        </div>
+        
+        {/* PDF Export Button */}
+        <ExportPdfButton childName={child.name} documentType="Weekly_Plan" />
+      </div>
+
+      {/* 1-YEAR NORTH STAR GOAL */}
+      {child.oneYearPlan && (
+        <div className="mb-10 bg-indigo-50 border border-indigo-100 rounded-2xl p-6 print:border-black print:bg-white print:rounded-none">
+          <h2 className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-2 print:text-black">
+            1-Year North Star Goal
+          </h2>
+          <p className="text-indigo-950 font-medium leading-relaxed print:text-black">
+            {child.oneYearPlan.publishedGoal}
+          </p>
+        </div>
+      )}
+
+      {/* 🔥 THE NEW PROGRESS CHART */}
+      <ProgressChart checkins={child.weeklyCheckins} />
+
+      {/* THIS WEEK'S TASKS */}
+      <div className="mt-12 mb-8 flex justify-between items-end">
+        <h2 className="text-2xl font-bold text-slate-900">This Week&apos;s Focus</h2>
+        {/* We hide the Log Check-in button from the final PDF */}
+        <Link 
+          href={`/dashboard/child/${child.id}/weekly/checkin`}
+          className="print:hidden px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
+        >
+          Log Week {currentWeek?.weekNumber || 0} Check-In
+        </Link>
+      </div>
+
+      {/* TASKS ACCORDION */}
+      <div className="space-y-4 print:space-y-6">
+        {weeklyTasks.map((task: any, index: number) => (
+          <details 
+            key={index} 
+            // In normal view, it's a closed accordion. On the PDF (print:open), it automatically expands everything!
+            className="group bg-white rounded-2xl shadow-sm border border-slate-200 print:shadow-none print:border-b print:rounded-none print:border-black"
+          >
+            <summary className="list-none flex justify-between items-center p-6 cursor-pointer select-none print:p-0 print:mb-2">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-2 group-open:text-indigo-700 transition-colors">
+                  {task.task}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 print:border-black print:bg-white">
+                    {task.frequency}
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 print:border-black print:bg-white">
+                    {task.duration}
+                  </span>
+                </div>
+              </div>
+              <div className="print:hidden text-slate-400 group-open:rotate-180 transition-transform">
+                ▼
+              </div>
+            </summary>
+
+            {/* EXPANDED DETAILS */}
+            <div className="px-6 pb-6 pt-2 border-t border-slate-100 text-sm text-slate-600 print:p-0 print:border-none print:text-black">
+              <div className="space-y-4 bg-slate-50 p-4 rounded-xl print:bg-white print:p-0">
+                
+                {task.description ? (
+                  <div>
+                    <span className="font-bold text-slate-900 block mb-1 print:text-black">How to do it:</span>
+                    <p className="leading-relaxed">{task.description}</p>
+                  </div>
+                ) : (
+                  <p className="italic text-slate-400">Detailed instructions will appear in future generated weeks.</p>
+                )}
+
+                {task.whyItWorks && (
+                  <div>
+                    <span className="font-bold text-slate-900 block mb-1 print:text-black">Why this helps:</span>
+                    <p className="leading-relaxed">{task.whyItWorks}</p>
+                  </div>
+                )}
+
+                {task.resourceSearch && (
+                  <div className="pt-2 print:hidden">
+                    <a 
+                      href={`https://www.youtube.com/results?search_query=${encodeURIComponent(task.resourceSearch)}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-700 hover:bg-red-100 font-semibold rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                      Find Tutorials on YouTube
+                    </a>
+                  </div>
+                )}
+                
+              </div>
+            </div>
+          </details>
+        ))}
+      </div>
+      
+      {/* A clean footer just for the PDF */}
+      <div className="hidden print:block mt-12 pt-4 border-t border-slate-300 text-center text-xs text-slate-500">
+        Generated by the SpecialCare App
+      </div>
+
+    </div>
+  );
+}
