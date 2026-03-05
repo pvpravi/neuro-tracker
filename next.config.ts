@@ -1,14 +1,11 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  // 🚀 THE FIX: Tell Turbopack to NOT bundle the PDF library
-  serverExternalPackages: ['pdf-parse'],
-  
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   experimental: {
-    serverActions: {
-      bodySizeLimit: '20mb',
-    },
-    // Keep this if you added it earlier!
-    middlewareClientMaxBodySize: '20mb', 
+    proxyClientMaxBodySize: "20mb", // Fixed the warning from your log
+  },
+  compiler: {
+    styledComponents: true, // Helps with CSS-in-JS build errors
   },
 };
 

@@ -1,4 +1,6 @@
-"use client"
+"use client"; // This MUST be the very first line
+
+import { useEffect, useState } from "react";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
