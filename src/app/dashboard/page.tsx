@@ -9,6 +9,7 @@ export default async function DashboardPage() {
   const user = await currentUser();
   if (!user) redirect("/");
 
+  // Fetch user and their children
   const dbUser = await prisma.user.findUnique({
     where: { clerkId: user.id },
     include: {
@@ -26,48 +27,67 @@ export default async function DashboardPage() {
 
   const children = dbUser?.children ?? [];
 
-  // 🛡️ Privacy Redirect for Parents (1 child only)
+  // 🛡️ 1. Privacy Redirect for Parents (Direct access for 1 child)
   if (children.length === 1) {
     redirect(`/dashboard/child/${children[0].id}`);
   }
 
+  // 🏠 2. Parent "First Start" View (0 children)
+  if (children.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center border border-slate-100">
+          <div className="text-6xl mb-6">👋</div>
+          <h1 className="text-3xl font-black text-slate-900 mb-4">Welcome</h1>
+          <p className="text-slate-500 mb-8 leading-relaxed">
+            Let&apos;s start by creating your child&apos;s neuro-affirming profile to build their first roadmap.
+          </p>
+          <Link 
+            href="/dashboard/add-child" 
+            className="block w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+          >
+            Create Child Profile
+          </Link>
+          <p className="mt-8 text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+            Powered by Medha Labs
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 👨‍⚕️ 3. Provider View (Multiple children)
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 flex flex-col">
+      <div className="max-w-6xl mx-auto space-y-8 w-full flex-grow">
         
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Provider Dashboard</h1>
-            <p className="text-sm text-slate-600 mt-1">
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Provider Dashboard</h1>
+            <p className="text-sm text-slate-500 mt-1">
               Active Patient Roster & Developmental Tracking
             </p>
           </div>
           <Link
             href="/dashboard/add-child"
-            className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold shadow-sm hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-bold shadow-sm hover:bg-indigo-700 transition-all active:scale-95"
           >
             + Add New Patient
           </Link>
         </div>
 
-        {children.length === 0 ? (
-          <div className="bg-white p-10 rounded-2xl shadow-sm border border-dashed border-slate-200 text-center">
-            <h2 className="text-lg font-semibold text-slate-800">No patients found</h2>
-            <Link href="/dashboard/add-child" className="text-indigo-600 hover:underline mt-2 inline-block">
-              Add your first patient profile
-            </Link>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <table className="w-full text-left border-collapse">
+        {/* Responsive Table Wrapper */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[800px]">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Patient Name</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Age</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Progress</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase">Actions</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-wider">Patient Name</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-wider">Age</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-wider">Progress</th>
+                  <th className="px-6 py-4 text-right text-xs font-black text-slate-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -77,41 +97,41 @@ export default async function DashboardPage() {
                   const hasPlan = !!child.oneYearPlan;
 
                   return (
-                    <tr key={child.id} className="hover:bg-slate-50 transition-colors group">
-                      <td className="px-6 py-4">
-                        <Link href={`/dashboard/child/${child.id}`} className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    <tr key={child.id} className="hover:bg-indigo-50/30 transition-colors group">
+                      <td className="px-6 py-5">
+                        <Link href={`/dashboard/child/${child.id}`} className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
                           {child.name}
                         </Link>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
+                      <td className="px-6 py-5 text-sm font-medium text-slate-600">
                         {child.age ? `${child.age}y` : '—'}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-5">
                         {hasPlan ? (
-                          <span className="px-2 py-1 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">ACTIVE</span>
+                          <span className="px-2.5 py-1 rounded-md text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100">ACTIVE</span>
                         ) : (
-                          <span className="px-2 py-1 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">PENDING INTAKE</span>
+                          <span className="px-2.5 py-1 rounded-md text-[10px] font-black bg-amber-50 text-amber-700 border border-amber-100">PENDING INTAKE</span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-indigo-500" style={{ width: `${progress * 100}%` }} />
+                          <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${progress * 100}%` }} />
                           </div>
-                          <span className="text-xs text-slate-500">{weeksCompleted}/52</span>
+                          <span className="text-xs font-bold text-slate-500">{weeksCompleted}/52</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-3">
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex justify-end gap-4">
                           <Link 
                             href={`/dashboard/child/${child.id}/weekly`} 
-                            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline underline-offset-4"
                           >
                             Plan
                           </Link>
                           <Link 
                             href={`/dashboard/child/${child.id}`} 
-                            className="text-xs font-semibold text-slate-600 hover:text-slate-900"
+                            className="text-xs font-bold text-slate-400 hover:text-slate-900"
                           >
                             Vault
                           </Link>
@@ -123,8 +143,20 @@ export default async function DashboardPage() {
               </tbody>
             </table>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* ⚖️ Legal & Clinical Footer */}
+      <footer className="max-w-6xl mx-auto w-full mt-12 pt-8 border-t border-slate-200 pb-8 text-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-bold mb-4">
+          © {new Date().getFullYear()} Special Care by Medha Labs
+        </p>
+        <p className="text-[10px] text-slate-400 leading-relaxed max-w-4xl mx-auto px-4">
+          <strong>Clinical Disclaimer:</strong> Special Care is an assistive organizational tool and does not provide medical or diagnostic advice. 
+          All AI-generated roadmaps and developmental insights are for informational purposes only and must be reviewed by a licensed healthcare professional 
+          before implementation. We do not guarantee the clinical accuracy of data extracted from uploaded documents.
+        </p>
+      </footer>
     </div>
   );
 }
